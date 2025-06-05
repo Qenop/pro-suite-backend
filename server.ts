@@ -1,6 +1,4 @@
-// server.ts
 import express, { Request, Response, NextFunction } from 'express';
-//import { seedAdminUser } from './seedAdmin';
 import mongoose from 'mongoose';
 import cors from 'cors';
 import dotenv from 'dotenv';
@@ -21,27 +19,39 @@ import reportsRoutes from './routes/reportsRoutes';
 import usersRoutes from './routes/usersRoutes';
 import authRoutes from './routes/authRoutes';
 
-//import { protect } from './middleware/authMiddleware'; // ✅ import protect
-
 import './jobs/scheduler';
 
 const app = express();
 
-// Serve uploaded files
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// ✅ Typed CORS config to allow GitHub Pages
+const allowedOrigins = ['https://qenop.github.io'];
+
+const corsOptions = {
+  origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+};
 
 // Middleware
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(express.json());
+
+// Serve uploaded files
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Health check
 app.get('/', (req: Request, res: Response) => {
   res.send('✅ ProSuite App API is running');
 });
 
-// 🟢 Public Routes (before `protect`)
+// 🟢 Public Routes
 app.use('/api/auth', authRoutes);
-app.use('/api/users', usersRoutes); // Only if registration is public
+app.use('/api/users', usersRoutes);
 
 app.use('/api/properties', propertyRoutes);
 app.use('/api/tenants', tenantRoutes);
@@ -54,7 +64,7 @@ app.use('/api/payments', tenantPaymentRoutes);
 app.use('/api/properties', invoiceRoutes);
 app.use('/api/reports', reportsRoutes);
 
-// Logging unmatched routes
+// Log unmatched routes
 app.use((req, res, next) => {
   console.log(`❌ Unmatched route: ${req.method} ${req.originalUrl}`);
   next();
@@ -80,9 +90,8 @@ const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/prosuite';
 
 mongoose
   .connect(MONGO_URI)
-  .then(async() => {
+  .then(async () => {
     console.log('✅ MongoDB connected');
-   // await seedAdminUser();
     app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
   })
   .catch((err: Error) => {
